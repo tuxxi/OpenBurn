@@ -31,10 +31,10 @@ pip-delete-this-directory.txt
 nosetests.xml
 coverage.xml
 
-# Mr Developer
-.mr.developer.cfg
+# IDEs
 .project
 .pydevproject
+.idea
 .vscode
 
 # Sphinx documentation
