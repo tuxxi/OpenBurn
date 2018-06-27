@@ -1,9 +1,13 @@
-from qtpy.QtWidgets import (QMainWindow, QMenuBar, QStatusBar, QAction, QApplication)
+from qtpy.QtWidgets import (QWidget, QFrame, QMainWindow, QMenuBar, QStatusBar, QAction, QApplication,
+                            QTabWidget, QVBoxLayout)
 
 from qtpy.QtGui import QIcon
 
 from openburn import RES
 from openburn.ui.dialogs.about import AboutDialog
+
+from openburn.ui.designtab import DesignTab
+
 
 class MainWindow(QMainWindow):
     """OpenBurn's main window"""
@@ -14,22 +18,25 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(self.title)
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QIcon(RES + "icons/nakka-finocyl.gif"))
-        
-        self.create_default_widgets()
 
-    
+        self.create_default_widgets()
+        self.setup_ui()
+
     def create_default_widgets(self):
         """Creates static widgets such as menubar and statusbar"""
+
         def create_menubar():
-            """Create menu bar and populate it with sub menu actions"""            
+            """Create menu bar and populate it with sub menu actions"""
+
             def file_menu():
+
                 """Create a file submenu"""
                 self.file_sub_menu = self.menubar.addMenu('File')
 
                 self.open_action = QAction('Open File', self)
                 self.open_action.setStatusTip('Open a new design')
                 self.open_action.setShortcut('CTRL+O')
-                #self.open_action.triggered.connect(self.open_file)
+                # self.open_action.triggered.connect(self.open_file)
 
                 self.exit_action = QAction('Exit', self)
                 self.exit_action.setStatusTip('Exit the application.')
@@ -71,4 +78,17 @@ class MainWindow(QMainWindow):
 
         create_statusbar()
         self.setStatusBar(self.statusbar)
-        
+
+    def setup_ui(self):
+        """setup the tab widget UI"""
+        self.tab_widget = QTabWidget()
+        self.tab_widget.addTab(DesignTab(), "Design")
+        self.tab_widget.addTab(QWidget(), "Simulation")
+        self.tab_widget.addTab(QWidget(), "Propellants")
+
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.tab_widget)
+        self.frame = QFrame()
+        self.frame.setLayout(self.layout)
+
+        self.setCentralWidget(self.frame)

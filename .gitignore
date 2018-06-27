@@ -16,9 +16,12 @@ lib64/
 parts/
 sdist/
 var/
+venv/
+build-*/
 *.egg-info/
 .installed.cfg
 *.egg
+*.pdy
 
 # Installer logs
 pip-log.txt

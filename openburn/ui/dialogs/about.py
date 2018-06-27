@@ -13,7 +13,7 @@ class AboutDialog(QDialog):
         super(AboutDialog, self).__init__(parent)
 
         self.setWindowTitle('About')
-        self.resize(100,100)
+        self.resize(150, 100)
 
         text = QLabel('OpenBurn')
         text.setStyleSheet("font-weight: bold;")
