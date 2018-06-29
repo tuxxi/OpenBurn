@@ -14,3 +14,6 @@ class OpenBurnMotor(OpenBurnObject):
 
     def add_grain(self, grain: OpenBurnGrain):
         self.grains.append(grain)
+
+    def get_num_grains(self):
+        return len(self.grains)

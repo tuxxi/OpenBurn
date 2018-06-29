@@ -9,14 +9,14 @@ class OpenBurnPropellant(OpenBurnObject):
 
 
 class SimplePropellant(OpenBurnPropellant):
-    """Simple propellant using Saint Robert's law"""
+    """Simple propellant using Saint Robert's law (r = aP^n)"""
     def __init__(self, name: str, a: float, n: float, cstar: float, rho: float, gamma: float = 1.25) -> None:
         super(SimplePropellant, self).__init__(name)
-        self.a : float= a
+        self.a: float = a
         self.n: float = n
         self.cstar: float = cstar
         self.rho: float = rho
-        self.gamma: float= gamma
+        self.gamma: float = gamma
 
 
 class AdvancedPropellant(SimplePropellant):

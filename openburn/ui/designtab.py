@@ -1,7 +1,7 @@
 from qtpy.QtWidgets import (QVBoxLayout, QHBoxLayout, QGridLayout, QFormLayout,
-                            QWidget, QFrame, QGroupBox, QLabel,
-                            QSizePolicy, QSplitter, QTableWidget, QPushButton, QToolButton
-                            )
+                            QWidget, QFrame, QGroupBox, QLabel, QSizePolicy,
+                            QSplitter, QTableView, QPushButton, QToolButton,
+                            QGraphicsView, QGraphicsScene)
 
 from qtpy.QtCore import Qt
 
@@ -18,7 +18,7 @@ class DesignTab(QWidget):
         def setup_grain_design():
             # grain table view
             master = QHBoxLayout(self)
-            master.addWidget(QTableWidget())
+            master.addWidget(QTableView())
 
             # grain design controls
             controls = QVBoxLayout(self)
@@ -88,19 +88,43 @@ class DesignTab(QWidget):
             layout.addWidget(self.btn_nozzle_settings)
             layout.addStretch()
 
-            gb_nozzle_info = QGroupBox(self.tr("Nozzle Info"))
+            self.gb_motor = QGroupBox(self.tr("Motor Info"))
             # fl_nozzle =
+
+        def setup_gfx_ui():
+            # design overview
+            self.motor_display_view = QGraphicsView()
+            self.motor_display_scene = QGraphicsScene()
+            self.motor_display_view.setScene(self.motor_display_scene)
+            self.motor_display_view.show()
+
+            # sliced cross section
+            self.grain_slice_view = QGraphicsView()
+            self.grain_slice_scene = QGraphicsScene()
+            self.grain_slice_view.setScene(self.grain_slice_scene)
+            self.grain_slice_view.show()
+
+            # splitter
+            self.splt_gfx = QSplitter(Qt.Horizontal)
+            self.splt_gfx.addWidget(self.motor_display_view)
+            self.splt_gfx.addWidget(self.grain_slice_view)
+            self.splt_gfx.setStretchFactor(0, 10)
+            self.splt_gfx.setStretchFactor(1, 3)
+            self.splt_gfx.setMinimumHeight(50)
 
         setup_grain_design()
         setup_chamber_design()
+        setup_gfx_ui()
 
         self.splt_grain_design = QSplitter(Qt.Horizontal)
         self.splt_grain_design.addWidget(self.gb_design)
+        self.splt_grain_design.addWidget(self.gb_motor)
         self.splt_grain_design.setStretchFactor(0, 10)
         self.splt_grain_design.setStretchFactor(1, 3)
 
         self.splt_main = QSplitter(Qt.Vertical)
         self.splt_main.addWidget(self.splt_grain_design)
+        self.splt_main.addWidget(self.splt_gfx)
         self.splt_main.setSizes([300, 150])
 
         layout = QVBoxLayout()
