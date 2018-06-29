@@ -1,6 +1,6 @@
 from math import pi, cos, radians
 
-from openburn.core.object import OpenBurnObject
+from openburn.object import OpenBurnObject
 
 
 class OpenBurnNozzle(OpenBurnObject):
@@ -32,4 +32,8 @@ class ConicalNozzle(OpenBurnNozzle):
         self.throat_len = throat_len
 
     def get_divergence_loss(self) -> float:
-        return 1 + cos(radians(self.half_angle)) / 2
+        """
+        //http://rasaero.com/dloads/Departures%20from%20Ideal%20Performance.pdf
+        :return:
+        """
+        return (1 + cos(radians(self.half_angle))) / 2

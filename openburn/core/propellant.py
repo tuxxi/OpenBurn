@@ -1,4 +1,4 @@
-from openburn.core.object import OpenBurnObject
+from openburn.object import OpenBurnObject
 
 
 class OpenBurnPropellant(OpenBurnObject):

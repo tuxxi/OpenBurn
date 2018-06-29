@@ -1,12 +1,16 @@
 from copy import deepcopy
 from math import sqrt
+from numpy import mean
 
-from qtpy.QtCore import QObject, Signal, Slot
+# from qtpy.QtCore import QObject, Signal, Slot
 
 from openburn.core.motor import OpenBurnMotor
 from openburn.core.grain import OpenBurnGrain
 
 from openburn.util import Q_
+
+MAX_SIM_TIME = 1000     # maximum simulation time in seconds before failing sim
+
 
 class SimSettings:
     """Params that control how the InternalBallisticsSim runs"""
@@ -19,7 +23,7 @@ class SimSettings:
 
 
 class SimDataPoint:
-    """A simulation data point"""
+    """Simulation data at a given discrete time step"""
     def __init__(self):
         self.motor: OpenBurnMotor = OpenBurnMotor()
         self.pressure: float = 0
@@ -33,23 +37,49 @@ class SimDataPoint:
 
 
 class SimResults:
-    """The results of running InternalBallisticsSim.run_sim"""
+    """The results of running an InternalBallisticsSim"""
     def __init__(self, data_points, burn_time, total_impulse):
         self.data = data_points
         self.burn_time = burn_time
         self.total_impulse = total_impulse
 
+    def get_max_presure(self):
+        return max(x.pressure for x in self.data)
 
-class InternalBallisticsSim(QObject):
+    def get_max_thrust(self):
+        return max(x.thrust for x in self.data)
+
+    def get_avg_thrust(self):
+        return mean(x.thrust for x in self.data)
+
+    def get_max_mass_flux(self):
+        return max(x.mass_flux for x in self.data)
+
+    def get_avg_isp(self):
+        return mean(x.thrust for x in self.data)
+
+    def get_kn_range(self):
+        """Returns a tuple of the kn range (min, max)"""
+        min_ = min(x.kn for x in self.data)
+        max_ = max(x.kn for x in self.data)
+        return min_, max_
+
+
+class SimulationException(Exception):
+    """Exception raised when the simulation encounters an error"""
+    def __init__(self, message):
+        super(SimulationException, self).__init__(message)
+
+
+class InternalBallisticsSim:
     """The internal ballistics simulator
     Calculates internal ballistics params"""
-    SimulationStarted = Signal()
-    SimulationFinished = Signal(bool)
 
     def __init__(self):
         super(InternalBallisticsSim, self).__init__()
 
-    def run_sim(self, motor: OpenBurnMotor, settings: SimSettings) -> "SimResults":
+    @classmethod
+    def run_sim(cls, motor: OpenBurnMotor, settings: SimSettings) -> "SimResults":
         """
         Regression simulation
         Calculates internal ballistics regression and info
@@ -68,29 +98,30 @@ class InternalBallisticsSim(QObject):
 
         while num_grains_burned < motor.get_num_grains():
             current_data = SimDataPoint()
-            current_motor = current_data.motor
 
-            # clone data point motors for initial condition 
+            # clone motor data for initial condition
             if iterations == 0:
-                current_motor = deepcopy(motor)
+                current_data.motor = deepcopy(motor)
             else:
-                current_motor = deepcopy(prev_data.motor)
+                current_data.motor = deepcopy(prev_data.motor)
+
+            current_motor = current_data.motor
 
             # regression simulation for each grain
             for grain in current_motor.grains:
                 if not grain.burned_out():
-                    burnrate = self.calc_steady_state_burn_rate(current_motor, grain)
+                    burnrate = cls.calc_steady_state_burn_rate(current_motor, grain)
                     current_data.burn_rate = burnrate
 
                     if not grain.burn(burnrate, settings.time_step):
                         num_grains_burned += 1
 
             # set simulation data for this time step after regression
-            current_data.pressure = self.calc_chamber_pressure(current_motor)
-            current_data.time = self.total_burn_time
-            current_data.thrust = self.calc_thrust(current_motor, settings)
-            current_data.mass_flux = self.calc_core_mass_flux(current_motor)
-            current_data.isp = self.calc_isp(current_motor)
+            current_data.pressure = cls.calc_chamber_pressure(current_motor)
+            current_data.time = total_burn_time
+            current_data.thrust = cls.calc_thrust(current_motor, settings)
+            current_data.mass_flux = cls.calc_mass_flux(current_motor, current_motor.length())
+            current_data.isp = cls.calc_isp(current_motor, settings)
             current_data.kn = current_motor.get_kn()
 
             # add data to results
@@ -104,17 +135,15 @@ class InternalBallisticsSim(QObject):
             iterations += 1
             prev_data = current_data
 
-            # fallback failure state: 1000 second burn time
-            if total_burn_time > 1000:
-                self.emit(self.SimulationFinished(False))
-                break
-
-        self.emit(self.SimulationFinished(True))
+            # fallback failure state: MAX_SIM_TIME second burn time
+            if total_burn_time > MAX_SIM_TIME:
+                raise SimulationException(f"Error! Simulation exceeded {MAX_SIM_TIME} seconds.")
 
         results = SimResults(data_points=data, total_impulse=total_impulse, burn_time=total_burn_time)
         return results
 
-    def calc_thrust(self, motor: OpenBurnMotor, settings: SimSettings) -> float:
+    @classmethod
+    def calc_thrust(cls, motor: OpenBurnMotor, settings: SimSettings) -> float:
         """
         Calculates the actual thrust using empirical inefficiency factors,
         then applys that Cf to the throat area and pressure to give the real thrust value
@@ -132,8 +161,8 @@ class InternalBallisticsSim(QObject):
         """
         nozzle = motor.nozzle
 
-        Pc = self.calc_chamber_pressure(motor)
-        Cf_v = self.calc_ideal_thrust_coeff(motor, settings, Pc)
+        Pc = cls.calc_chamber_pressure(motor)
+        Cf_v = cls.calc_ideal_thrust_coeff(motor, settings, Pc)
 
         Nd = nozzle.get_divergence_loss()
         Nt = settings.two_phase_flow_eff
@@ -144,7 +173,8 @@ class InternalBallisticsSim(QObject):
         # thrust = Cf * At * Pc
         return Cf_real * nozzle.get_throat_area() * Pc
 
-    def calc_ideal_thrust_coeff(self, motor: OpenBurnMotor, settings: SimSettings, chamber_pressure: float) -> float:
+    @classmethod
+    def calc_ideal_thrust_coeff(cls, motor: OpenBurnMotor, settings: SimSettings, chamber_pressure: float) -> float:
         """
         Calculates the ideal thrust coefficient at a given chamber pressure using
         the isentropic flow equations
@@ -165,14 +195,15 @@ class InternalBallisticsSim(QObject):
 
         # set up other variables
         exp_ratio = motor.nozzle.get_expansion_ratio()
-        exit_pressure = self.calc_exit_pressure(motor, chamber_pressure)
+        exit_pressure = cls.calc_exit_pressure(motor, chamber_pressure)
         pressure_ratio = exit_pressure / chamber_pressure
 
         momentum_thrust = sqrt(k_square * two_over_k ** k_over_k) * (1 - pressure_ratio ** k_minus_1)
         pressure_thrust = ((exit_pressure - settings.ambient_pressure * exp_ratio) / chamber_pressure)
         return momentum_thrust + pressure_thrust
 
-    def calc_exit_pressure(self, motor: OpenBurnMotor, chamber_pressure: float) -> float:
+    @classmethod
+    def calc_exit_pressure(cls, motor: OpenBurnMotor, chamber_pressure: float) -> float:
         """
         Calculates nozzle exit pressure using the exit mach number
         :param motor: the motor
@@ -182,14 +213,15 @@ class InternalBallisticsSim(QObject):
         gamma = motor.get_gamma()
 
         # find exit mach number
-        exit_mach = self.calc_exit_mach(motor)
+        exit_mach = cls.calc_exit_mach(motor)
 
         # calculate the ratio of pressures Pc/Pe
         pressure_ratio = (1 + 0.5*(gamma - 1) * exit_mach**2) ** -(gamma / (gamma - 1))
         # multiply by Pc to get Pe alone
         return chamber_pressure * pressure_ratio
 
-    def calc_exit_mach(self, motor: OpenBurnMotor) -> float:
+    @classmethod
+    def calc_exit_mach(cls, motor: OpenBurnMotor) -> float:
         """
         Calculates the exit mach number from the nozzle area ratio and gamma.
         Numerically solves the isentropic flow equation for exit mach number
@@ -229,7 +261,8 @@ class InternalBallisticsSim(QObject):
 
         return mach_number
 
-    def calc_chamber_pressure(self, motor: OpenBurnMotor) -> float:
+    @classmethod
+    def calc_chamber_pressure(cls, motor: OpenBurnMotor) -> float:
         """
         Calculates chamber pressure assuming a steady-state chamber
         p = (Kn * a * rho * C* )^(1/(1-n))
@@ -245,14 +278,42 @@ class InternalBallisticsSim(QObject):
         base = motor.get_kn() * motor.get_ballistic_a() * rho * cstar
         return base ** exp
 
-    def calc_steady_state_burn_rate(self, motor: OpenBurnMotor, grain: OpenBurnGrain) -> float:
+    @classmethod
+    def calc_steady_state_burn_rate(cls, motor: OpenBurnMotor, grain: OpenBurnGrain) -> float:
         """
         Calculates the steady-state burn rate for a given grain
 
-        :param motor: 
+        :param motor:
         :param grain:
         :return: steady state burn rate (R_0) in inches/second
         """
         prop = grain.propellant
-        Pc = self.calc_chamber_pressure(motor)
+        Pc = cls.calc_chamber_pressure(motor)
         return prop.a * Pc ** prop.n
+
+    @classmethod
+    def calc_isp(cls, motor: OpenBurnMotor, settings: SimSettings) -> float:
+        """
+        Calculates Isp given a motor
+        Isp = F / mdot * g
+        :param settings:
+        :param motor:
+        :return: Isp in seconds
+        """
+        return cls.calc_thrust(motor, settings) / motor.get_mass_flow()
+
+    @classmethod
+    def calc_mass_flux(cls, motor: OpenBurnMotor, x_val: float) -> float:
+        """
+        Calculates the mass flux at the given x coordinate
+        :param x_val: x value of the point to find mass flux,
+            where x = 0 is at the head end and x = len is the end of the propellant surface.
+
+        :param motor:
+        :return: Mass flux in lbs/sec/in^2
+        """
+        grain = motor.get_grain_at_x(x_val)
+        if grain:
+            return motor.get_upstream_mass_flow(x_val) / grain.get_port_area()
+
+        raise Exception(f"Grain not found at x value: {x_val}")
