@@ -1,11 +1,11 @@
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod
 from math import pi
 
 from openburn.core.propellant import OpenBurnPropellant
 from openburn.object import OpenBurnObject
 
 
-class OpenBurnGrain(OpenBurnObject, metaclass=ABCMeta):
+class OpenBurnGrain(OpenBurnObject):
     """Base class of all propellant segments.
     The segment is cylindrical with a 2D port shape extruded through the entire length.
     """
@@ -31,9 +31,17 @@ class OpenBurnGrain(OpenBurnObject, metaclass=ABCMeta):
         return grain_volume - port_volume
 
     @abstractmethod
-    def get_burning_area(self):
+    def get_burning_area(self) -> float:
         """
         get the uninhibited burning area
+        :return: burning surface area in in^2
+        """
+
+    @abstractmethod
+    def get_upstream_burning_area(self, x_val:float) -> float:
+        """
+        get the uninhibited burning area upstream of x_val
+        :param x_val:
         :return: burning surface area in in^2
         """
 
@@ -91,6 +99,15 @@ class CylindricalCoreGrain(OpenBurnGrain):
         core_area = pi * self.core_diameter * self.length
         face_area = 1/4*pi * (self.diameter**2 - self.core_diameter**2)
         return core_area + self.burning_faces * face_area
+
+    def get_upstream_burning_area(self, x_val:float):
+        if x_val > self.length:
+            return 0
+        else:
+            faces = self.burning_faces > 1
+            core_area = pi * self.core_diameter * (self.length - x_val)
+            face_area = 1/4 * pi * (self.diameter ** 2 - self.core_diameter ** 2)
+            return core_area + face_area * int(faces)
 
     def is_burned_out(self):
         return self.core_diameter >= self.diameter

@@ -65,11 +65,14 @@ class SimResults:
     def get_max_thrust(self):
         return max(x.thrust for x in self.data)
 
-    def get_avg_thrust(self):
-        return mean(x.thrust for x in self.data)
+    def get_max_isp(self):
+        return max(x.isp for x in self.data)
 
     def get_max_mass_flux(self):
         return max(x.mass_flux for x in self.data)
+
+    def get_avg_thrust(self):
+        return mean(x.thrust for x in self.data)
 
     def get_avg_isp(self):
         return mean(x.isp for x in self.data)
@@ -125,7 +128,7 @@ class InternalBallisticsSim:
 
             # regression simulation for each grain
             for grain in current_motor.grains:
-                burnrate = cls.calc_steady_state_burn_rate(current_motor, grain)
+                burnrate = cls.calc_steady_state_burn_rate(current_motor, grain, settings)
                 current_data.burn_rate = burnrate
 
                 grain.burn(burnrate, settings.time_step)
@@ -134,7 +137,7 @@ class InternalBallisticsSim:
                     num_burnout += 1
 
             # set simulation data for this time step after regression
-            current_data.pressure = cls.calc_chamber_pressure(current_motor)
+            current_data.pressure = cls.calc_chamber_pressure(current_motor, settings)
             current_data.time = total_burn_time
             current_data.thrust = cls.calc_thrust(current_motor, settings)
             current_data.mass_flux = cls.calc_mass_flux(current_motor, current_motor.get_length())
@@ -178,11 +181,13 @@ class InternalBallisticsSim:
         """
         nozzle = motor.nozzle
 
-        Pc = cls.calc_chamber_pressure(motor)
+        Pc = cls.calc_chamber_pressure(motor, settings)
         Cf_v = cls.calc_ideal_thrust_coeff(motor, settings, Pc)
 
         Nd = nozzle.get_divergence_loss()
+
         Nt = settings.two_phase_flow_eff
+        # Nt = 1  # two phase flow losses already accounted for in the chamber pressure
         Nf = settings.skin_friction_eff
 
         Cf_real = Nd * Nt * (Nf * Cf_v + (1 - Nf))
@@ -205,7 +210,7 @@ class InternalBallisticsSim:
         """
         # simplify terms involving k (gamma)
         k = motor.avg_propellant.gamma
-        k_square = (2 * k * k) / (k - 1)
+        k_square = (2 * k**2) / (k - 1)
         two_over_k = 2 / (k + 1)
         k_over_k = (k + 1) / (k - 1)
         k_minus_1 = (k - 1) / k
@@ -233,7 +238,7 @@ class InternalBallisticsSim:
         exit_mach = cls.calc_exit_mach(motor)
 
         # calculate the ratio of pressures Pc/Pe
-        pressure_ratio = (1 + 0.5*(gamma - 1) * exit_mach**2) ** -(gamma / (gamma - 1))
+        pressure_ratio = (1 + 0.5*(gamma - 1) * exit_mach**2) ** (-gamma / (gamma - 1))
         # multiply by Pc to get Pe alone
         return chamber_pressure * pressure_ratio
 
@@ -247,7 +252,7 @@ class InternalBallisticsSim:
         see https://www.grc.nasa.gov/www/k-12/airplane/rktthsum.html
         """
         if motor.nozzle.exit_dia <= motor.nozzle.throat_dia:
-            return 1.0
+            return 1.0  # sonic nozzle has a mach number of 1 by definition
 
         mach_number = 2.2   # init with some arbitrary supersonic mach number
         gamma = motor.avg_propellant.gamma
@@ -265,7 +270,7 @@ class InternalBallisticsSim:
         while abs(area_ratio - guess_area_ratio) > 0.0001:
             # find area ratio using our guesses
             base = 1 + 0.5 * gm1 * guess_mach**2
-            new_area_ratio = 1 / (guess_mach * base ** (-exponent)) * (gp1 / 2) ** exponent
+            new_area_ratio = 1 / (guess_mach * base ** -exponent * (gp1 / 2) ** exponent)
 
             # find change (derivative)
             deriv = (new_area_ratio - guess_area_ratio) / (guess_mach - mach_number)
@@ -280,33 +285,37 @@ class InternalBallisticsSim:
         return mach_number
 
     @classmethod
-    def calc_chamber_pressure(cls, motor: OpenBurnMotor) -> float:
+    def calc_chamber_pressure(cls, motor: OpenBurnMotor, settings: SimSettings) -> float:
         """
         Calculates chamber pressure assuming a steady-state chamber
         p = (Kn * a * rho * C* )^(1/(1-n))
         see Rocket Propulsion Elements, Eq. ??
 
         :param motor:
+        :param settings: controls two phase flow efficacy which affects C*
         :return: steady-state chamber pressure, in lbs/in^3
         """
-        rho = Q_(motor.avg_propellant.rho, 'lb_per_in3')
-        rho = rho.to('slug_per_in3').magnitude
-        cstar = motor.avg_propellant.cstar
+        rho = Q_(motor.avg_propellant.rho, 'pound').to('slug').magnitude
+
+        # cstar is affected by two phase flow efficiency
+        cstar = (motor.avg_propellant.cstar )#* settings.two_phase_flow_eff)
         exp = 1 / (1 - motor.avg_propellant.n)
+
         base = motor.get_kn() * motor.avg_propellant.a * rho * cstar
         return base ** exp
 
     @classmethod
-    def calc_steady_state_burn_rate(cls, motor: OpenBurnMotor, grain: OpenBurnGrain) -> float:
+    def calc_steady_state_burn_rate(cls, motor: OpenBurnMotor, grain: OpenBurnGrain, settings: SimSettings) -> float:
         """
         Calculates the steady-state burn rate for a given grain
 
         :param motor:
         :param grain:
+        :param settings: controls two phase flow eff
         :return: steady state burn rate (R_0) in inches/second
         """
         prop = grain.propellant
-        Pc = cls.calc_chamber_pressure(motor)
+        Pc = cls.calc_chamber_pressure(motor, settings)
         return prop.a * Pc ** prop.n
 
     @classmethod

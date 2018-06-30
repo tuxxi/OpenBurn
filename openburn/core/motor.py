@@ -68,8 +68,8 @@ class OpenBurnMotor(OpenBurnObject):
                 if ceil(x) < ceil(x_val - len_):
                     burning_surface = grain.get_burning_area()
                 else:
-                    burning_surface = NotImplemented
-                # mass_flow += burning_surface * grain.propellant.rho * grain.burn_rate
+                    burning_surface = grain.get_upstream_burning_area(x + len_ - x_val)
+                mass_flow += burning_surface * grain.propellant.rho * grain.burn_rate
 
             x += len_
 
@@ -86,13 +86,12 @@ class OpenBurnMotor(OpenBurnObject):
             grain.burn_rate
             for grain in self.grains)
 
-    def get_grain_at_x(self, x_val: float) -> "OpenBurnGrain":
+    def get_grain_at_x(self, x_val: float) -> "OpenBurnGrain" or None:
         """
         Returns the grain found at the given x -val in the motor
         :param x_val: x value of the point to find mass flux,
             where x = 0 is at the head end and x = len is the end of the propellant surface.
-        :raises Exception() if grain is not found
-        :return: the grain,
+        :return: the grain if found, otherwise None
         """
         x = 0
         for grain in self.grains:
@@ -100,7 +99,7 @@ class OpenBurnMotor(OpenBurnObject):
             if x >= x_val:
                 return grain
 
-        raise Exception(f"Did not find grain at x val {x_val}")
+        return None
 
     def get_burning_area(self):
         """

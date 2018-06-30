@@ -1,5 +1,6 @@
 from math import pi, cos, radians
 
+from abc import abstractmethod
 from openburn.object import OpenBurnObject
 
 
@@ -19,9 +20,10 @@ class OpenBurnNozzle(OpenBurnObject):
     def get_exit_area(self) -> float:
         return 1/4 * pi * self.exit_dia ** 2
 
+    @abstractmethod
     def get_divergence_loss(self) -> float:
-        """"""
-        return 1
+        """Get the ratio of efficiency losses due to the shape of the the nozzle divergent section
+        :returns float between 0 and 1"""
 
 
 class ConicalNozzle(OpenBurnNozzle):
@@ -40,7 +42,8 @@ class ConicalNozzle(OpenBurnNozzle):
 
     def get_divergence_loss(self) -> float:
         """
+        Get the ratio of efficiency losses due to the shape of the the nozzle divergent section
         //http://rasaero.com/dloads/Departures%20from%20Ideal%20Performance.pdf
-        :return:
+        :return: float between 0 and 1
         """
         return (1 + cos(radians(self.half_angle))) / 2
