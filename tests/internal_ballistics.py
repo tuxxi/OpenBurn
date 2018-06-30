@@ -12,6 +12,7 @@ class InternalBallisticsTest(unittest.TestCase):
         """Set up the test data"""
         self.settings = SimSettings(timestep=0.01)
         self.propellant = SimplePropellant("Test Propellant", 0.01, 0.4, 5000, 0.06)
+        # using a list comprehension to create four unique grain objects
         self.grains = [CylindricalCoreGrain(diameter=2, length=4, core_diameter=1, burning_faces=2,
                                             propellant=self.propellant)
                        for _ in range(0, 4)]

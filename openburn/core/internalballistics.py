@@ -106,12 +106,13 @@ class InternalBallisticsSim:
         iterations: int = 0
         total_burn_time: float = 0
         total_impulse: float = 0
+        num_burnout = 0
 
         data = []
 
         prev_data = None
 
-        while True:
+        while num_burnout < motor.get_num_grains():
             current_data = SimDataPoint()
 
             # clone motor data for initial condition
@@ -122,19 +123,15 @@ class InternalBallisticsSim:
 
             current_motor = current_data.motor
 
-            num_burnout = 0
             # regression simulation for each grain
             for grain in current_motor.grains:
+                burnrate = cls.calc_steady_state_burn_rate(current_motor, grain)
+                current_data.burn_rate = burnrate
+
+                grain.burn(burnrate, settings.time_step)
+
                 if grain.is_burned_out():
                     num_burnout += 1
-                else:
-                    burnrate = cls.calc_steady_state_burn_rate(current_motor, grain)
-                    current_data.burn_rate = burnrate
-
-                    grain.burn(burnrate, settings.time_step)
-
-            if num_burnout >= motor.get_num_grains():
-                break
 
             # set simulation data for this time step after regression
             current_data.pressure = cls.calc_chamber_pressure(current_motor)

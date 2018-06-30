@@ -1,11 +1,11 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABCMeta
 from math import pi
 
 from openburn.core.propellant import OpenBurnPropellant
 from openburn.object import OpenBurnObject
 
 
-class OpenBurnGrain(OpenBurnObject):
+class OpenBurnGrain(OpenBurnObject, metaclass=ABCMeta):
     """Base class of all propellant segments.
     The segment is cylindrical with a 2D port shape extruded through the entire length.
     """
