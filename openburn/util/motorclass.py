@@ -1,10 +1,10 @@
-from math import floor, log2
+from math import log2
 
 
 def get_motor_class(nsec: float):
-    """Calculates info about a motor given the total nsec
+    """Calculates info about a motor given the total newton-seconds
     Returns a tuple of motor class letter and percent"""
-    # motors below 'D' have special
+    # motors below 'D' are special cases
     if nsec < 10:
         if nsec > 5:
             des = 'C'
@@ -19,7 +19,7 @@ def get_motor_class(nsec: float):
             des = 'N/A'
             percent = 0
 
-    # all motors above 'D' follow binary powers of 2
+    # all motors above 'D' follow powers of 2
     else:
 
         # Calculate the power of two associated with this ns class

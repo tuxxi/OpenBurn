@@ -1,6 +1,6 @@
-from openburn.util.motorclass import get_motor_class
-
 import unittest
+
+from openburn.util.motorclass import get_motor_class
 
 
 class MotorClassTest(unittest.TestCase):

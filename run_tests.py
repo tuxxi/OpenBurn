@@ -1,7 +1,8 @@
 import unittest
 
 tests = [
-    'tests.motor_class'
+    'tests.motor_class',
+    'tests.internal_ballistics'
 ]
 
 suite = unittest.TestSuite()

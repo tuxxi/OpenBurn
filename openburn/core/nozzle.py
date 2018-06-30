@@ -27,6 +27,13 @@ class OpenBurnNozzle(OpenBurnObject):
 class ConicalNozzle(OpenBurnNozzle):
     """A conical nozzle with a straight cut throat"""
     def __init__(self, throat: float, exit: float, half_angle: float, throat_len: float):
+        """
+        :param throat: the diameter of the nozzle throat, in inches
+        :param exit: diameter of the nozzle expansion exit, in inches
+        :param half_angle: half angle of the conical expansion section. 15 degrees is typical
+        :param throat_len: length of the straight-cut throat.
+            NOTE: this parameter does not do anything currently.
+        """
         super(ConicalNozzle, self).__init__(throat, exit)
         self.half_angle = half_angle
         self.throat_len = throat_len

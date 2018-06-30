@@ -1,3 +1,3 @@
-QtPy >= 1.4.2
-Pint >= 0.8.1
-numpy >= 1.14.5
+QtPy
+Pint
+# numpy

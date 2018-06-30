@@ -1,6 +1,6 @@
 from copy import deepcopy
 from math import sqrt
-from numpy import mean
+from statistics import mean
 
 # from qtpy.QtCore import QObject, Signal, Slot
 
@@ -14,11 +14,21 @@ MAX_SIM_TIME = 1000     # maximum simulation time in seconds before failing sim
 
 class SimSettings:
     """Params that control how the InternalBallisticsSim runs"""
-    def __init__(self, pres: float, temp: float, twophase: float, skinfric: float, timestep: float = 0.01):
+    def __init__(self, pres: float = 14.7, temp: float = 70.0,
+                 twophase: float = 0.85, skinfric: float = 0.98, timestep: float = 0.01):
+        """
+        :param pres: ambient pressure, in psi
+        :param temp: ambient temperature, in deg F.
+        :param twophase: fraction of combustion that is gaseous.
+            BurnSim assumes 85% (0.85) by default.
+        :param skinfric: total efficiency of the nozzle expansion, when accounting for losses to skin friction
+            0.97 to 0.98 is typical for this value
+        :param timestep: discrete time step for simulation. defaults to 0.01 seconds
+        """
         self.ambient_pressure: float = pres
         self.ambient_temp: float = temp
-        self.two_phase_flow_eff: float = twophase   # % of combustion that is gaseous. BurnSim assumes 85% by default.
-        self.skin_friction_eff: float = skinfric    # 98-99% is typical for this value
+        self.two_phase_flow_eff: float = twophase
+        self.skin_friction_eff: float = skinfric
         self.time_step: float = timestep
 
 
@@ -43,6 +53,12 @@ class SimResults:
         self.burn_time = burn_time
         self.total_impulse = total_impulse
 
+    def get_burn_time(self):
+        return self.burn_time
+
+    def get_total_impulse(self):
+        return self.total_impulse
+
     def get_max_presure(self):
         return max(x.pressure for x in self.data)
 
@@ -56,7 +72,7 @@ class SimResults:
         return max(x.mass_flux for x in self.data)
 
     def get_avg_isp(self):
-        return mean(x.thrust for x in self.data)
+        return mean(x.isp for x in self.data)
 
     def get_kn_range(self):
         """Returns a tuple of the kn range (min, max)"""
@@ -88,7 +104,6 @@ class InternalBallisticsSim:
         :returns SimResults: an object that encapsulates the results of the simulation run"""
 
         iterations: int = 0
-        num_grains_burned: int = 0
         total_burn_time: float = 0
         total_impulse: float = 0
 
@@ -96,7 +111,7 @@ class InternalBallisticsSim:
 
         prev_data = None
 
-        while num_grains_burned < motor.get_num_grains():
+        while True:
             current_data = SimDataPoint()
 
             # clone motor data for initial condition
@@ -107,20 +122,25 @@ class InternalBallisticsSim:
 
             current_motor = current_data.motor
 
+            num_burnout = 0
             # regression simulation for each grain
             for grain in current_motor.grains:
-                if not grain.burned_out():
+                if grain.is_burned_out():
+                    num_burnout += 1
+                else:
                     burnrate = cls.calc_steady_state_burn_rate(current_motor, grain)
                     current_data.burn_rate = burnrate
 
-                    if not grain.burn(burnrate, settings.time_step):
-                        num_grains_burned += 1
+                    grain.burn(burnrate, settings.time_step)
+
+            if num_burnout >= motor.get_num_grains():
+                break
 
             # set simulation data for this time step after regression
             current_data.pressure = cls.calc_chamber_pressure(current_motor)
             current_data.time = total_burn_time
             current_data.thrust = cls.calc_thrust(current_motor, settings)
-            current_data.mass_flux = cls.calc_mass_flux(current_motor, current_motor.length())
+            current_data.mass_flux = cls.calc_mass_flux(current_motor, current_motor.get_length())
             current_data.isp = cls.calc_isp(current_motor, settings)
             current_data.kn = current_motor.get_kn()
 
@@ -154,9 +174,9 @@ class InternalBallisticsSim:
         http://www.dtic.mil/dtic/tr/fulltext/u2/a099791.pdf
         Cf_real = Nd * Nt * (Nf * Cf_v + (1 - nf))
         where:
-            Nd is divergence loss %
-            Nt is two phase flow loss %
-            Nf is skin friction loss %
+            Nd is divergence loss ratio
+            Nt is two phase flow loss ratio
+            Nf is skin friction loss ratio
             Cv_f is ideal thrust coeff.
         """
         nozzle = motor.nozzle
@@ -187,8 +207,8 @@ class InternalBallisticsSim:
         See Rocket Propulsion Elements, Eq. 3-29
         """
         # simplify terms involving k (gamma)
-        k = motor.get_gamma()
-        k_square = 2 * k * k / (k - 1)
+        k = motor.avg_propellant.gamma
+        k_square = (2 * k * k) / (k - 1)
         two_over_k = 2 / (k + 1)
         k_over_k = (k + 1) / (k - 1)
         k_minus_1 = (k - 1) / k
@@ -198,8 +218,8 @@ class InternalBallisticsSim:
         exit_pressure = cls.calc_exit_pressure(motor, chamber_pressure)
         pressure_ratio = exit_pressure / chamber_pressure
 
-        momentum_thrust = sqrt(k_square * two_over_k ** k_over_k) * (1 - pressure_ratio ** k_minus_1)
-        pressure_thrust = ((exit_pressure - settings.ambient_pressure * exp_ratio) / chamber_pressure)
+        momentum_thrust = sqrt(k_square * two_over_k ** k_over_k * (1 - (pressure_ratio ** k_minus_1)))
+        pressure_thrust = ((exit_pressure - settings.ambient_pressure) * exp_ratio) / chamber_pressure
         return momentum_thrust + pressure_thrust
 
     @classmethod
@@ -210,7 +230,7 @@ class InternalBallisticsSim:
         :param chamber_pressure: current chamber pressure
         :return: nozzle exit pressure, in lbs/in^3
         """
-        gamma = motor.get_gamma()
+        gamma = motor.avg_propellant.gamma
 
         # find exit mach number
         exit_mach = cls.calc_exit_mach(motor)
@@ -233,7 +253,7 @@ class InternalBallisticsSim:
             return 1.0
 
         mach_number = 2.2   # init with some arbitrary supersonic mach number
-        gamma = motor.get_gamma()
+        gamma = motor.avg_propellant.gamma
         area_ratio = motor.nozzle.get_expansion_ratio()
         gp1 = gamma + 1
         gm1 = gamma - 1
@@ -241,13 +261,14 @@ class InternalBallisticsSim:
 
         # initial guesses
         guess_area_ratio = area_ratio / 2
-        guess_mach = mach_number
+        # init guess as a tiny bit different so we don't divide by zero when finding the change
+        guess_mach = mach_number + 0.05
 
-        # newton's method for numerical approximation
+        # newton's method
         while abs(area_ratio - guess_area_ratio) > 0.0001:
             # find area ratio using our guesses
             base = 1 + 0.5 * gm1 * guess_mach**2
-            new_area_ratio = 1 / (guess_mach * base ** -exponent) * (gp1 / 2) ** exponent
+            new_area_ratio = 1 / (guess_mach * base ** (-exponent)) * (gp1 / 2) ** exponent
 
             # find change (derivative)
             deriv = (new_area_ratio - guess_area_ratio) / (guess_mach - mach_number)
@@ -271,11 +292,11 @@ class InternalBallisticsSim:
         :param motor:
         :return: steady-state chamber pressure, in lbs/in^3
         """
-        rho = Q_(motor.get_propellant_density(), 'lb/in3')
-        rho = rho.to('slug/in3').magnitude
-        cstar = motor.get_cstar()
-        exp = 1 / (1 - motor.get_ballistic_n())
-        base = motor.get_kn() * motor.get_ballistic_a() * rho * cstar
+        rho = Q_(motor.avg_propellant.rho, 'lb_per_in3')
+        rho = rho.to('slug_per_in3').magnitude
+        cstar = motor.avg_propellant.cstar
+        exp = 1 / (1 - motor.avg_propellant.n)
+        base = motor.get_kn() * motor.avg_propellant.a * rho * cstar
         return base ** exp
 
     @classmethod

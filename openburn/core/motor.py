@@ -1,8 +1,11 @@
 from typing import List
+from statistics import mean
 from math import ceil
 
 from openburn.core.grain import OpenBurnGrain
 from openburn.core.nozzle import OpenBurnNozzle
+from openburn.core.propellant import SimplePropellant
+
 from openburn.object import OpenBurnObject
 
 
@@ -11,9 +14,17 @@ class OpenBurnMotor(OpenBurnObject):
         super(OpenBurnMotor, self).__init__()
         self.grains: List[OpenBurnGrain] = []
         self.nozzle: OpenBurnNozzle = None
+        self.avg_propellant = None
 
     def add_grain(self, grain: OpenBurnGrain) -> None:
         self.grains.append(grain)
+
+    def set_grains(self, grains: List[OpenBurnGrain]) -> None:
+        self.grains = grains
+        self.avg_propellant = self.calc_avg_propellant()
+
+    def set_nozzle(self, nozzle: OpenBurnNozzle) -> None:
+        self.nozzle = nozzle
 
     def get_num_grains(self) -> float:
         return len(self.grains)
@@ -54,15 +65,26 @@ class OpenBurnMotor(OpenBurnObject):
             len_ = grain.length
             if x <= x_val:
                 pass
-                # if ceil(x) < ceil(x_val - len_):
-                #     burning_surface = grain.get_burning_area()
-                # else:
-                #     burning_surface = NotImplemented
-                # mass_flow += burning_surface * grain.propellant.rho # * grain.get_burn_rate??
+                if ceil(x) < ceil(x_val - len_):
+                    burning_surface = grain.get_burning_area()
+                else:
+                    burning_surface = NotImplemented
+                # mass_flow += burning_surface * grain.propellant.rho * grain.burn_rate
 
             x += len_
 
         return mass_flow
+
+    def get_mass_flow(self) -> float:
+        """
+        Calculate total mass flow out of the nozzle
+        :return: mass flow in lb/sec
+        """
+        return sum(
+            grain.get_burning_area() *
+            grain.propellant.rho *
+            grain.burn_rate
+            for grain in self.grains)
 
     def get_grain_at_x(self, x_val: float) -> "OpenBurnGrain":
         """
@@ -93,3 +115,16 @@ class OpenBurnMotor(OpenBurnObject):
         :return:
         """
         return self.get_burning_area() / self.nozzle.get_throat_area()
+
+    def calc_avg_propellant(self):
+        """
+        approximation time!! The average propellant is just the aesthetic mean of all the
+        individual propellant params
+        :return:
+        """
+        a = mean(grain.propellant.a for grain in self.grains)
+        n = mean(grain.propellant.n for grain in self.grains)
+        cstar = mean(grain.propellant.cstar for grain in self.grains)
+        rho = mean(grain.propellant.rho for grain in self.grains)
+        gamma = mean(grain.propellant.gamma for grain in self.grains)
+        return SimplePropellant("AVG:" + str(self.uuid), a, n, cstar, rho, gamma)
