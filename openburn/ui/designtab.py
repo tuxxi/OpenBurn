@@ -53,27 +53,29 @@ class DesignTab(QWidget):
             movedown = QHBoxLayout()
             self.btn_move_down = QToolButton()
             self.btn_move_down.setArrowType(Qt.DownArrow)
-            moveup.addWidget(self.btn_move_down)
-            moveup.addWidget(QLabel(self.tr("Move Down")))
+            movedown.addWidget(self.btn_move_down)
+            movedown.addWidget(QLabel(self.tr("Move Down")))
             controls.addLayout(movedown)
+            controls.addStretch()
 
             # add info for motor design
-            # gb_motor_info = QGroupBox(self.tr("Propellant Info"))
-            # fl_motor_info = QFormLayout()
-            # self.lbl_num_grains = QLabel()
-            # fl_motor_info.addRow(QLabel(self.tr("Number of Segments")), self.lbl_num_grains)
-            # self.lbl_motor_dia = QLabel()
-            # fl_motor_info.addRow(QLabel(self.tr("Motor Diameter")), self.lbl_motor_dia)
-            # self.lbl_motor_len = QLabel()
-            # fl_motor_info.addRow(QLabel(self.tr("Motor Length")), self.lbl_motor_len)
-            # self.lbl_prop_mass = QLabel()
-            # fl_motor_info.addRow(QLabel(self.tr("Propellant Mass")), self.lbl_prop_mass)
-            # self.lbl_volume_loading = QLabel()
-            # fl_motor_info.addRow(QLabel(self.tr("Volume Loading")), self.lbl_volume_loading)
+            fl_propellant_info = QFormLayout()
+            gb_motor_info = QGroupBox(self.tr("Propellant Info"))
+            gb_motor_info.setLayout(fl_propellant_info)
+
+            self.lbl_num_grains = QLabel()
+            fl_propellant_info.addRow(QLabel(self.tr("Number of Segments:")), self.lbl_num_grains)
+            self.lbl_motor_dia = QLabel()
+            fl_propellant_info.addRow(QLabel(self.tr("Motor Diameter:")), self.lbl_motor_dia)
+            self.lbl_motor_len = QLabel()
+            fl_propellant_info.addRow(QLabel(self.tr("Propellant Length:")), self.lbl_motor_len)
+            self.lbl_prop_mass = QLabel()
+            fl_propellant_info.addRow(QLabel(self.tr("Propellant Mass:")), self.lbl_prop_mass)
+            self.lbl_volume_loading = QLabel()
+            fl_propellant_info.addRow(QLabel(self.tr("Volume Loading:")), self.lbl_volume_loading)
 
             # set group box's layout
-            # gb_motor_info.setLayout(fl_motor_info)
-            # controls.addWidget(gb_motor_info)
+            controls.addWidget(gb_motor_info)
 
             # setup master layout
             master.addLayout(controls)
@@ -81,15 +83,43 @@ class DesignTab(QWidget):
             self.gb_design.setLayout(master)
 
         def setup_chamber_design():
+            # master layout
+            master = QVBoxLayout()
+            # master group box
+            self.gb_chamber = QGroupBox(self.tr("Chamber Design"))
+
+            # nozzle settings button
             self.btn_nozzle_settings = QPushButton(self.tr("Edit Nozzle"))
             self.btn_nozzle_settings.setMinimumHeight(50)
+            master.addWidget(self.btn_nozzle_settings)
 
-            layout = QVBoxLayout()
-            layout.addWidget(self.btn_nozzle_settings)
-            layout.addStretch()
+            # nozzle info pane
+            fl_nozzle_info = QFormLayout()
+            gb_nozzle = QGroupBox(self.tr("Nozzle Info"))
+            gb_nozzle.setLayout(fl_nozzle_info)
 
-            self.gb_motor = QGroupBox(self.tr("Motor Info"))
-            # fl_nozzle =
+            self.lbl_nozzle_throat = QLabel()
+            fl_nozzle_info.addRow(QLabel(self.tr("Throat Diameter:")), self.lbl_nozzle_throat)
+            self.lbl_nozzle_exit = QLabel()
+            fl_nozzle_info.addRow(QLabel(self.tr("Exit Diameter:")), self.lbl_nozzle_exit)
+            self.lbl_nozzle_expansion_ratio = QLabel()
+            fl_nozzle_info.addRow(QLabel(self.tr("Expansion Ratio:")), self.lbl_nozzle_expansion_ratio)
+            # add group box to master
+            master.addWidget(gb_nozzle)
+            master.addStretch()
+
+            # overall motor info pane
+            fl_motor_info = QFormLayout()
+            gb_motor = QGroupBox(self.tr("Motor Info"))
+            gb_motor.setLayout(fl_motor_info)
+
+            self.lbl_kn = QLabel()
+            fl_motor_info.addRow(QLabel(self.tr("Kn:")), self.lbl_kn)
+            self.lbl_port_throat = QLabel()
+            fl_motor_info.addRow(QLabel(self.tr("Port/Throat Ratio:")), self.lbl_port_throat)
+
+            master.addWidget(gb_motor)
+            self.gb_chamber.setLayout(master)
 
         def setup_gfx_ui():
             # design overview
@@ -118,7 +148,7 @@ class DesignTab(QWidget):
 
         self.splt_grain_design = QSplitter(Qt.Horizontal)
         self.splt_grain_design.addWidget(self.gb_design)
-        self.splt_grain_design.addWidget(self.gb_motor)
+        self.splt_grain_design.addWidget(self.gb_chamber)
         self.splt_grain_design.setStretchFactor(0, 10)
         self.splt_grain_design.setStretchFactor(1, 3)
 

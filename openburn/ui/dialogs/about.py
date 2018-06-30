@@ -1,5 +1,4 @@
 from qtpy.QtCore import Qt
-from qtpy.QtGui import QIcon
 from qtpy.QtWidgets import QDialog, QLabel, QVBoxLayout, QSpacerItem
 
 from openburn import __version__
@@ -13,7 +12,7 @@ class AboutDialog(QDialog):
         super(AboutDialog, self).__init__(parent)
 
         self.setWindowTitle('About')
-        self.resize(150, 100)
+        self.resize(175, 100)
 
         text = QLabel('OpenBurn')
         text.setStyleSheet("font-weight: bold;")
@@ -21,12 +20,6 @@ class AboutDialog(QDialog):
 
         version = QLabel('Version ' + __version__)
 
-        auth = QLabel("Authors:")
-        auth.setStyleSheet("font-weight: bold;")
-        auth.setAlignment(Qt.AlignCenter)
-
-        authors = [ QLabel('tuxxi: aidan@sojourner.me')     # .. add more later?
-            ]
         github = QLabel('<a href=https://github.com/tuxxi/OpenBurn>GitHub</a>')
         github.setTextFormat(Qt.RichText);
         github.setTextInteractionFlags(Qt.TextBrowserInteraction);
@@ -37,9 +30,27 @@ class AboutDialog(QDialog):
         self.layout.addWidget(version)
         self.layout.addWidget(github)
 
+        authors = ['tuxxi: aidan@sojourner.me'     # .. add more later?
+                   ]
+        special_thanks = ['John Wickman',
+                          'Peter Hackett'
+                          ]
+        # authors
         self.layout.addSpacerItem(QSpacerItem(10, 10))
+        auth = QLabel("Authors:")
+        auth.setStyleSheet("font-weight: bold;")
+        auth.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(auth)
         for author in authors:
-            self.layout.addWidget(author)
+            self.layout.addWidget(QLabel(author))
+
+        # special thanks
+        self.layout.addSpacerItem(QSpacerItem(10, 10))
+        thx = QLabel("Special Thanks:")
+        thx.setStyleSheet("font-weight: bold;")
+        thx.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(thx)
+        for thanks in special_thanks:
+            self.layout.addWidget(QLabel(thanks))
 
         self.setLayout(self.layout)

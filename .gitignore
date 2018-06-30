@@ -22,6 +22,7 @@ build-*/
 .installed.cfg
 *.egg
 *.pdy
+main.spec
 
 # Installer logs
 pip-log.txt

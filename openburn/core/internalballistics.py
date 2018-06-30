@@ -25,7 +25,7 @@ class SimSettings:
 class SimDataPoint:
     """Simulation data at a given discrete time step"""
     def __init__(self):
-        self.motor: OpenBurnMotor = OpenBurnMotor()
+        self.motor: OpenBurnMotor = None
         self.pressure: float = 0
         self.mass_flux: float = 0
         self.thrust: float = 0

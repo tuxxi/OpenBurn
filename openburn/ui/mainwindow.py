@@ -3,9 +3,8 @@ from qtpy.QtWidgets import (QWidget, QFrame, QMainWindow, QMenuBar, QStatusBar, 
 
 from qtpy.QtGui import QIcon
 
-from openburn import RES
+from openburn import RESOURCE_PATH
 from openburn.ui.dialogs.about import AboutDialog
-
 from openburn.ui.designtab import DesignTab
 
 
@@ -17,7 +16,7 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
         self.setWindowTitle(self.title)
         self.setGeometry(100, 100, 800, 600)
-        self.setWindowIcon(QIcon(RES + "icons/nakka-finocyl.gif"))
+        self.setWindowIcon(QIcon(RESOURCE_PATH + "icons/nakka-finocyl.gif"))
 
         self.create_default_widgets()
         self.setup_ui()
