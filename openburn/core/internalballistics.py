@@ -7,9 +7,9 @@ from statistics import mean
 from openburn.core.motor import OpenBurnMotor
 from openburn.core.grain import OpenBurnGrain
 
-from openburn.util import Q_
+from openburn.util.units import convert_magnitude
 
-MAX_SIM_TIME = 1000     # maximum simulation time in seconds before failing sim
+MAX_SIM_TIME = 50     # maximum simulation time in seconds before failing sim
 
 
 class SimSettings:
@@ -106,13 +106,12 @@ class InternalBallisticsSim:
         :param settings:
         :returns SimResults: an object that encapsulates the results of the simulation run"""
 
-        iterations: int = 0
-        total_burn_time: float = 0
-        total_impulse: float = 0
+        iterations = 0
+        total_burn_time = 0
+        total_impulse = 0
         num_burnout = 0
 
         data = []
-
         prev_data = None
 
         while num_burnout < motor.get_num_grains():
@@ -295,13 +294,12 @@ class InternalBallisticsSim:
         :param settings: controls two phase flow efficacy which affects C*
         :return: steady-state chamber pressure, in lbs/in^3
         """
-        rho = Q_(motor.avg_propellant.rho, 'pound').to('slug').magnitude
+        rho_slugs = convert_magnitude(motor.avg_propellant.rho, 'lb_per_in3', 'slug_per_in3')
 
-        # cstar is affected by two phase flow efficiency
-        cstar = (motor.avg_propellant.cstar )#* settings.two_phase_flow_eff)
+        cstar = motor.avg_propellant.cstar  # * settings.two_phase_flow_eff
         exp = 1 / (1 - motor.avg_propellant.n)
 
-        base = motor.get_kn() * motor.avg_propellant.a * rho * cstar
+        base = motor.get_kn() * motor.avg_propellant.a * rho_slugs * cstar
         return base ** exp
 
     @classmethod
