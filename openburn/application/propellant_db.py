@@ -13,18 +13,26 @@ class PropellantDatabase(QObject):
 
     def __init__(self, filename: str):
         super(PropellantDatabase, self).__init__()
+        self.database_filename = None
         self.propellants: List[OpenBurnPropellant] = []
-        self.database_filename: str = filename
+        self.load_database(filename)
 
     def load_database(self, filename: str):
-        self.propellants = {}
+        self.clear_database()
         with open(filename, 'r') as f:
-            self.propellants = jsonpickle.decode(f.read())
+            data = f.read()
+            if len(data) > 0:
+                self.propellants = jsonpickle.decode(data)
+            else:
+                raise Exception("Failed to load file " + filename + "! File was empty!")
+
+        self.database_filename: str = filename
 
     def save_database(self):
         with open(self.database_filename, 'w') as f:
-            data = jsonpickle.encode(self.propellants)
-            f.write(data)
+            if len(self.propellants) > 0:
+                jsonpickle.set_encoder_options('json', sort_keys=True, indent=4)
+                f.write(jsonpickle.encode(self.propellants))
 
     def clear_database(self):
         self.propellants.clear()
