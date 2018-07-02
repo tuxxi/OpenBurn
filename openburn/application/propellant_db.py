@@ -7,15 +7,17 @@ from openburn.core.propellant import OpenBurnPropellant
 
 
 class PropellantDatabase(QObject):
+    database_ready = Signal()
     propellant_added = Signal(str)
     propellant_edited = Signal(str)
     propellant_removed = Signal(str)
 
-    def __init__(self, filename: str):
+    def __init__(self, filename: str = None):
         super(PropellantDatabase, self).__init__()
-        self.database_filename = None
         self.propellants: List[OpenBurnPropellant] = []
-        self.load_database(filename)
+        self.database_filename = filename
+        if self.database_filename is not None:
+            self.load_database(filename)
 
     def load_database(self, filename: str):
         self.clear_database()
@@ -23,13 +25,11 @@ class PropellantDatabase(QObject):
             data = f.read()
             if len(data) > 0:
                 self.propellants = jsonpickle.decode(data)
-            else:
-                raise Exception("Failed to load file " + filename + "! File was empty!")
-
         self.database_filename: str = filename
+        self.database_ready.emit()
 
     def save_database(self):
-        with open(self.database_filename, 'w') as f:
+        with open(self.database_filename, 'w+') as f:
             if len(self.propellants) > 0:
                 jsonpickle.set_encoder_options('json', sort_keys=True, indent=4)
                 f.write(jsonpickle.encode(self.propellants))

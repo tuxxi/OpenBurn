@@ -25,25 +25,26 @@ class OpenBurnSettings:
 class SettingsDatabase(QObject):
     settings_changed = Signal()
 
-    def __init__(self, filename: str):
+    def __init__(self, filename: str = None):
         super(SettingsDatabase, self).__init__()
         self.settings = OpenBurnSettings()  # default settings
-        self.settings_filename = None
-        self.load_settings(filename)
+        self.settings_filename = filename
+        if self.settings_filename is not None:
+            self.load_settings(filename)
 
     def load_settings(self, filename: str):
         with open(filename, 'r') as f:
             data = f.read()
             if len(data) > 0:
                 self.settings = jsonpickle.decode(data)
+                self.settings_changed.emit()
         self.settings_filename = filename
-        self.emit(self.settings_changed)
 
     def save_settings(self):
-        with open(self.settings_filename, 'w') as f:
+        with open(self.settings_filename, 'w+') as f:
             jsonpickle.set_encoder_options('json', sort_keys=True, indent=4)
             f.write(jsonpickle.encode(self.settings))
 
     def default_settings(self):
         self.settings = OpenBurnSettings()
-        self.emit(self.settings_changed)
+        self.settings_changed.emit()
