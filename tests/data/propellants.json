@@ -1,0 +1,35 @@
+[
+    {
+        "py/object": "openburn.core.propellant.SimplePropellant",
+        "py/state": {
+            "a": 0.0341,
+            "cstar": 4706,
+            "gamma": 1.226,
+            "n": 0.2249,
+            "name": "68/10",
+            "rho": 0.058
+        }
+    },
+    {
+        "py/object": "openburn.core.propellant.SimplePropellant",
+        "py/state": {
+            "a": 0.015,
+            "cstar": 4800,
+            "gamma": 1.25,
+            "n": 0.2,
+            "name": "Orange Sunset",
+            "rho": 0.6
+        }
+    },
+    {
+        "py/object": "openburn.core.propellant.SimplePropellant",
+        "py/state": {
+            "a": 1,
+            "cstar": 3,
+            "gamma": 5,
+            "n": 2,
+            "name": "TEST",
+            "rho": 4
+        }
+    }
+]
