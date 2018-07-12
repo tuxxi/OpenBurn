@@ -1,15 +1,26 @@
-from qtpy.QtWidgets import (QVBoxLayout, QHBoxLayout, QGridLayout, QFormLayout,
+from qtpy.QtWidgets import (QVBoxLayout, QHBoxLayout, QFormLayout,
                             QWidget, QFrame, QGroupBox, QLabel, QSizePolicy,
                             QSplitter, QTableView, QPushButton, QToolButton,
                             QGraphicsView, QGraphicsScene)
 
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Signal, Slot
+
+from openburn.ui.dialogs.grain_dialog import NewGrainDialog
 
 
 class DesignTab(QWidget):
     def __init__(self):
         super(DesignTab, self).__init__()
         self.setup_ui()
+        self.grain_dialog = None
+
+        self.btn_new_grain.clicked.connect(self.create_grain_dialog)
+
+    def create_grain_dialog(self):
+        self.grain_dialog = NewGrainDialog()
+        self.grain_dialog.show()
+        self.grain_dialog.activateWindow()
+        self.grain_dialog.raise_()
 
     def setup_ui(self):
         sp = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)

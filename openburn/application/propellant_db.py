@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict
 import jsonpickle
 
 from qtpy.QtCore import QObject, Signal
@@ -14,10 +14,14 @@ class PropellantDatabase(QObject):
 
     def __init__(self, filename: str = None):
         super(PropellantDatabase, self).__init__()
-        self.propellants: List[OpenBurnPropellant] = []
-        self.database_filename = filename
-        if self.database_filename is not None:
+
+        # Dict ordered by propellant name : propellant
+        self.propellants: Dict[str: OpenBurnPropellant] = {}
+        if filename is not None:
             self.load_database(filename)
+
+    def propellant_names(self):
+        return [prop.name for prop in self.propellants]
 
     def load_database(self, filename: str):
         self.clear_database()
@@ -34,24 +38,27 @@ class PropellantDatabase(QObject):
                 jsonpickle.set_encoder_options('json', sort_keys=True, indent=4)
                 f.write(jsonpickle.encode(self.propellants))
 
-    def clear_database(self):
+    def clear_database(self) -> None:
         self.propellants.clear()
 
-    def add_propellant(self, propellant: OpenBurnPropellant):
-        self.propellants.append(propellant)
+    def add_propellant(self, propellant: OpenBurnPropellant) -> None:
+        self.propellants[propellant.name] = propellant
         self.propellant_added.emit(propellant.name)    # emit signal
 
-    def remove_propellant(self, propellant: OpenBurnPropellant):
-        self.propellants.remove(propellant)
-        self.propellant_removed.emit(propellant.name)   # emit signal
+    def remove_propellant(self, key: str) -> None:
+        """
+        Removes a propellant from the database
+        :param key: the propellant name to be removed
+        """
+        self.propellants.pop(key)
+        self.propellant_removed.emit(key)   # emit signal
 
-    def update_propellant(self, old_prop: OpenBurnPropellant, new_prop: OpenBurnPropellant):
+    def update_propellant(self, key: str, new_prop: OpenBurnPropellant) -> None:
         """Updates the propellant database
-        :param old_prop: the old propellant
+        :param key: the old propellant's name
         :param new_prop: the new propellant, to replace old_prop
         """
-        index = self.propellants.index(old_prop)
-        self.propellants[index] = new_prop
-        self.propellant_edited.emit(old_prop.name)
+        self.propellants[key] = new_prop
+        self.propellant_edited.emit(key)
 
 

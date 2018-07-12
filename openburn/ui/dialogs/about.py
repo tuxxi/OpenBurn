@@ -1,7 +1,7 @@
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QDialog, QLabel, QVBoxLayout, QSpacerItem
 
-from openburn import __version__
+import openburn as ob
 
 
 class AboutDialog(QDialog):
@@ -13,36 +13,31 @@ class AboutDialog(QDialog):
 
         self.setWindowTitle('About')
         self.resize(175, 100)
+        self.layout = QVBoxLayout()
 
-        text = QLabel('OpenBurn')
-        text.setStyleSheet("font-weight: bold;")
-        text.setAlignment(Qt.AlignCenter)
+        title = QLabel('OpenBurn')
+        title.setStyleSheet("font-weight: bold;")
+        title.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(title)
 
-        version = QLabel('Version ' + __version__)
+        version = QLabel('Version ' + ob.__version__)
+        self.layout.addWidget(version)
 
         github = QLabel('<a href=https://github.com/tuxxi/OpenBurn>GitHub</a>')
-        github.setTextFormat(Qt.RichText);
-        github.setTextInteractionFlags(Qt.TextBrowserInteraction);
-        github.setOpenExternalLinks(True);
-
-        self.layout = QVBoxLayout()
-        self.layout.addWidget(text)
-        self.layout.addWidget(version)
+        github.setTextFormat(Qt.RichText)
+        github.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        github.setOpenExternalLinks(True)
         self.layout.addWidget(github)
 
-        authors = ['tuxxi: aidan@sojourner.me'     # .. add more later?
-                   ]
-        special_thanks = ['John Wickman',
-                          'Peter Hackett'
-                          ]
-        # authors
+        # author
         self.layout.addSpacerItem(QSpacerItem(10, 10))
-        auth = QLabel("Authors:")
+        auth = QLabel(self.tr("Author:"))
         auth.setStyleSheet("font-weight: bold;")
         auth.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(auth)
-        for author in authors:
-            self.layout.addWidget(QLabel(author))
+
+        author = f"{ob.__author__}: {ob.__author_email__}"
+        self.layout.addWidget(QLabel(author))
 
         # special thanks
         self.layout.addSpacerItem(QSpacerItem(10, 10))
@@ -50,7 +45,7 @@ class AboutDialog(QDialog):
         thx.setStyleSheet("font-weight: bold;")
         thx.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(thx)
-        for thanks in special_thanks:
+        for thanks in ob.__special_thanks__:
             self.layout.addWidget(QLabel(thanks))
 
         self.setLayout(self.layout)

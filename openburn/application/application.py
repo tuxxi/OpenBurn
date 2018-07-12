@@ -7,6 +7,14 @@ from openburn.application.propellant_db import PropellantDatabase
 
 
 class OpenBurnApplication(QObject):
+    """
+    Encapsulates application context that is shared across many UI
+    elements and modules:
+        propellant database,
+        settings,
+        undo stack,
+        and current design info
+    """
     def __init__(self):
         super(OpenBurnApplication, self).__init__()
         self.motor = OpenBurnMotor()
